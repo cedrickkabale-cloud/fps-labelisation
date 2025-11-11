@@ -1,0 +1,60 @@
+* { box-sizing: border-box; }
+body { 
+    font-family: Arial, sans-serif; 
+    background: #504cbe; 
+    margin: 0; 
+    padding: 20px; 
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.container { 
+  max-width: 900px; 
+  width: min(900px, 95%);
+  margin: 0; 
+  background: #fff; 
+  padding: 20px; 
+  border-radius: 6px; 
+  border: 2px solid #0b5ed7; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+}
+header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; }
+.form {
+  display: block;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.form-group { margin-bottom: 10px; }
+.form-group label { display:block; font-weight:600; margin-bottom:8px; text-align: center; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: block;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.actions { margin-top: 10px; display:flex; gap:10px; justify-content: center; }
+button { background:#0b5ed7; color:#fff; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; }
+button:hover { opacity:0.95; }
+.locked { padding:20px; background:#fff3cd; border:1px solid #ffeeba; text-align: center; }
+.status { color: #2b8a3e; font-weight:600; }
+.message { margin-top:10px; }
+
+/* label print area: 6cm x 5cm => convert to px: 1cm ≈ 37.8px at 96dpi -> but printing DPI may differ.
+   We'll use css cm units to ensure print size. */
+.qr-label { width:6cm; height:5cm; border:1px solid #000; display:flex; align-items:center; padding:6px; gap:8px; margin:20px auto 0; }
+.qr-code { width:40%; }
+.logo { width:40%; height:auto; object-fit:contain; }
+.asset-id { font-weight:700; font-size:0.9rem; }
+
+/* Print styling: only print the qr-label */
+@media print {
+  body * { visibility: hidden; }
+  .qr-label, .qr-label * { visibility: visible; }
+  .qr-label { position: absolute; left: 0; top: 0; }
+}

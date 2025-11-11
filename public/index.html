@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FPS - Labelisation QR</title>
+  <link rel="stylesheet" href="/style.css">
+  <!-- QRCode lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- React & Babel via CDN (dev only) -->
+  <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+  <!-- SheetJS for XLSX export -->
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function generateAssetId() {
+      const date = new Date();
+      const y = date.getFullYear();
+      const r = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+      return `FPS${y}${r}`;
+    }
+
+    function App() {
+      const initialValues = {
+        asset_id: generateAssetId(),
+        description: '',
+        category: '',
+        location: '',
+        responsible: '',
+        purchase_date: '',
+        purchase_price: '',
+        currency: 'USD',
+        useful_life: '',
+        depreciation_method: '',
+        depreciation_rate: '',
+        accumulated_depreciation: '',
+        net_book_value: '',
+        condition: '',
+        alert: '',
+        remarks: ''
+      };
+
+      const [form, setForm] = useState(initialValues);
+      const [logged, setLogged] = useState(false);
+      const [password, setPassword] = useState('');
+      const [loginError, setLoginError] = useState('');
+      const [message, setMessage] = useState('');
+      const [showList, setShowList] = useState(false);
+  const [items, setItems] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  // UI state: filters, view and toast
+  const [searchText, setSearchText] = useState('');
+  const [conditionFilter, setConditionFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [viewMode, setViewMode] = useState('table');
+  const [toast, setToast] = useState({ show: false, msg: '', type: 'success', action: null });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [tableFullscreen, setTableFullscreen] = useState(false);
+  // Sélection multiple
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Défilement horizontal amélioré (drag-to-scroll + molette horizontale)
+  const tableScrollRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStateRef = useRef({ startX: 0, scrollLeft: 0 });
+
+  const onDragStart = (e) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    setIsDragging(true);
+    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
+    // Utiliser la position relative au conteneur
+    const left = el.getBoundingClientRect().left + window.scrollX;
+    dragStateRef.current.startX = pageX - left;
+    dragStateRef.current.scrollLeft = el.scrollLeft;
+    el.classList.add('dragging');
+  };
+
+  const onDragMove = (e) => {
+    if (!isDragging) return;
+    const el = tableScrollRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const pageX = e.touches ? e.touches[0].pageX : e.pageX;
+    const left = el.getBoundingClientRect().left + window.scrollX;
+    const x = pageX - left;
+    const walk = (x - dragStateRef.current.startX);
+    el.scrollLeft = dragStateRef.current.scrollLeft - walk;
+  };
+
+  const onDragEnd = () => {
+    setIsDragging(false);
+    const el = tableScrollRef.current;
+    if (el) el.classList.remove('dragging');
+  };
+
+  const onWheel = (e) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    // Convertir la molette verticale en défilement horizontal quand pertinent
+    if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }
+  };
+
+      useEffect(() => {
+        setForm(f => ({...f, asset_id: generateAssetId()}));
+      }, []);
+
+      // Activer automatiquement la vue "paysage" (plein écran) quand on ouvre la liste
+      useEffect(() => {
+        setTableFullscreen(!!showList);
+      }, [showList]);
+
+      function showToast(message, type='success', duration=3500, action=null) {
+        setToast({ show: true, msg: message, type, action });
+        const timer = setTimeout(() => setToast({ show: false, msg: '', type: 'success' }), duration);
+        // Clear timer if there's an action
+        if (action) return () => clearTimeout(timer);
+      }
+
+      async function fetchItems() {
+        try {
+          const res = await fetch('/api/equipment');
+          const data = await res.json();
+          setItems(data || []);
+        } catch (err) {
+          console.error('fetchItems', err);
+          showToast('Erreur lors du chargement: ' + err.message, 'error');
+        }
+      }
+
+      function onChange(e) {
+        const { name, value } = e.target;
+        setForm(f => ({...f, [name]: value}));
+      }
+
+      function handleLogin(e) {
+        e.preventDefault();
+        if (password === 'fps2025') {
+          setLogged(true);
+          setLoginError('');
+          showToast('Connexion réussie ! Bienvenue 👋', 'success');
+        } else {
+          setLoginError('Mot de passe incorrect. Veuillez réessayer.');
+          showToast('Mot de passe incorrect', 'error');
+        }
+      }
+
+      function logout() {
+        setLogged(false);
+        setPassword('');
+        setShowList(false);
+        setForm({...initialValues, asset_id: generateAssetId()});
+        showToast('Déconnexion réussie', 'success');
+      }
+
+      async function submit(e) {
+        e.preventDefault();
+        setMessage('Envoi en cours...');
+        try {
+          if (editingId) {
+            const res = await fetch(`/api/equipment/${editingId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(form)
+            });
+            const data = await res.json();
+            if (data.success) {
+              setMessage('Équipement modifié');
+              setEditingId(null);
+              setForm({...initialValues, asset_id: generateAssetId()});
+              await fetchItems();
+            } else {
+              setMessage('Erreur: ' + (data.error || 'inconnue'));
+            }
+          } else {
+            const res = await fetch('/api/equipment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(form)
+            });
+            const data = await res.json();
+            if (data.success) {
+              setMessage('Enregistré avec succès - Vous pouvez maintenant imprimer le QR code');
+              // Afficher le QR code immédiatement après enregistrement
+              renderLabel(data.item.asset_id);
+              // Réinitialiser le formulaire avec un nouvel ID
+              setForm({...initialValues, asset_id: generateAssetId()});
+            } else {
+              setMessage('Erreur: ' + (data.error || 'inconnue'));
+            }
+          }
+        } catch (err) {
+          setMessage('Erreur réseau: ' + err.message);
+        }
+      }
+
+      function renderLabel(assetId) {
+        const label = document.getElementById('label');
+        const labelContainer = document.getElementById('label-container');
+        const qrcodeDiv = document.getElementById('qrcode');
+        
+        // Nettoyer le QR code existant
+        qrcodeDiv.innerHTML = '';
+        
+        // Générer le nouveau QR code avec taille optimisée pour impression
+        new QRCode(qrcodeDiv, {
+          text: assetId,
+          width: 106,  // 2.8cm à 96dpi ≈ 106px
+          height: 106,
+          correctLevel: QRCode.CorrectLevel.H
+        });
+
+        // Mettre à jour l'ID
+        label.querySelector('.asset-id').textContent = assetId;
+        
+        // Afficher l'étiquette et le conteneur
+        label.classList.add('visible');
+        labelContainer.style.display = 'block';
+        
+        // Scroll vers l'étiquette
+        setTimeout(() => {
+          labelContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+
+      function printLabel() {
+        const label = document.getElementById('label');
+        
+        if (!label.classList.contains('visible')) {
+          showToast('Veuillez d\'abord enregistrer un équipement avant d\'imprimer', 'error');
+          return;
+        }
+        
+        // Afficher une confirmation avant d'imprimer
+        const assetId = label.querySelector('.asset-id').textContent;
+        const confirmPrint = window.confirm(
+          `Voulez-vous imprimer l'étiquette pour l'équipement ${assetId} ?\n\n` +
+          `L'étiquette sera imprimée au format 6cm × 5cm.\n` +
+          `Assurez-vous que votre imprimante est configurée correctement.`
+        );
+        
+        if (confirmPrint) {
+          // Scroll vers l'étiquette pour qu'elle soit visible
+          label.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Attendre un peu pour que le scroll se termine
+          setTimeout(() => {
+            // Lancer l'impression
+            window.print();
+            showToast('Impression lancée pour ' + assetId, 'success');
+          }, 300);
+        }
+      }
+
+      function startEdit(item) {
+        setEditingId(item._id);
+        // copy only the known form fields
+        const copy = {...form};
+        Object.keys(initialValues).forEach(k => { copy[k] = item[k] || ''; });
+        setForm(copy);
+        setShowList(false);
+        window.scrollTo(0,0);
+      }
+
+      const [deletedItem, setDeletedItem] = useState(null);
+
+      // Restore filter state from URL on mount
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setSearchText(params.get('search') || '');
+        setConditionFilter(params.get('condition') || '');
+        setDateFrom(params.get('from') || '');
+        setDateTo(params.get('to') || '');
+        setViewMode(params.get('view') || 'table');
+      }, []);
+
+      // Update URL when filters change
+      useEffect(() => {
+        const params = new URLSearchParams();
+        if (searchText) params.set('search', searchText);
+        if (conditionFilter) params.set('condition', conditionFilter);
+        if (dateFrom) params.set('from', dateFrom);
+        if (dateTo) params.set('to', dateTo);
+        if (viewMode !== 'table') params.set('view', viewMode);
+        
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+      }, [searchText, conditionFilter, dateFrom, dateTo, viewMode]);
+
+      async function deleteItem(id) {
+        try {
+          // Confirmation avant suppression
+          const item = items.find(it => it._id === id);
+          const label = item ? `${item.asset_id || ''} — ${item.description || ''}`.trim() : '';
+          const ok = window.confirm(`Confirmer la suppression définitive${label ? ` de\n${label}` : ''} ?\nVous pourrez annuler juste après.`);
+          if (!ok) return;
+          // Find the item before deletion
+          const itemToDelete = item || items.find(it => it._id === id);
+          if (!itemToDelete) return;
+
+          const res = await fetch(`/api/equipment/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (data.success) {
+            // Store the deleted item temporarily
+            setDeletedItem(itemToDelete);
+            await fetchItems();
+            showToast(
+              'Équipement supprimé',
+              'warning', 
+              7000,
+              <button className="undo" onClick={() => restoreItem(itemToDelete)}>
+                Annuler la suppression
+              </button>
+            );
+          } else {
+            showToast('Erreur lors de la suppression: ' + (data.error || 'inconnue'), 'error');
+          }
+        } catch (err) {
+          showToast('Erreur réseau: ' + err.message, 'error');
+        }
+      }
+
+      async function restoreItem(item) {
+        try {
+          if (!item) return;
+          // Remove _id to create as new item
+          const { _id, created_at, ...itemData } = item;
+          const res = await fetch('/api/equipment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(itemData)
+          });
+          const data = await res.json();
+          if (data.success) {
+            setDeletedItem(null);
+            await fetchItems();
+            showToast('Équipement restauré', 'success');
+          } else {
+            showToast('Erreur lors de la restauration: ' + (data.error || 'inconnue'), 'error');
+          }
+        } catch (err) {
+          showToast('Erreur réseau: ' + err.message, 'error');
+        }
+      }
+
+      function getPaginatedItems(items) {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return items.slice(startIndex, startIndex + itemsPerPage);
+      }
+
+      function getFilteredItems() {
+        return items.filter(it => {
+          // text search across several fields
+          if (searchText) {
+            const t = searchText.toLowerCase();
+            const hay = `${it.asset_id || ''} ${it.description || ''} ${it.location || ''} ${it.responsible || ''}`.toLowerCase();
+            if (!hay.includes(t)) return false;
+          }
+          if (conditionFilter) {
+            if ((it.condition || '').toLowerCase() !== conditionFilter.toLowerCase()) return false;
+          }
+          if (dateFrom) {
+            const dFrom = new Date(dateFrom);
+            const c = it.created_at ? new Date(it.created_at) : null;
+            if (!c || c < dFrom) return false;
+          }
+          if (dateTo) {
+            const dTo = new Date(dateTo);
+            const c = it.created_at ? new Date(it.created_at) : null;
+            if (!c || c > new Date(dTo.getTime() + 24*3600*1000 - 1)) return false;
+          }
+          return true;
+        });
+      }
+
+      // Helpers sélection multiple
+      function isSelected(id) {
+  return selectedIds.includes(id);
+      }
+      function toggleSelect(id) {
+        setSelectedIds(prev => 
+          prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+      }
+      function selectAllCurrentPage() {
+        const pageItems = getPaginatedItems(getFilteredItems());
+        const allSelected = pageItems.every(it => selectedIds.includes(it._id));
+        if (allSelected) {
+          setSelectedIds(prev => prev.filter(id => !pageItems.some(it => it._id === id)));
+        } else {
+          const newIds = pageItems.map(it => it._id).filter(id => !selectedIds.includes(id));
+          setSelectedIds(prev => [...prev, ...newIds]);
+        }
+      }
+  function clearSelection() { setSelectedIds([]); }
+
+      async function restoreItems(itemsArray) {
+        try {
+          for (const item of itemsArray) {
+            const { _id, created_at, ...itemData } = item;
+            const res = await fetch('/api/equipment', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itemData)
+            });
+            await res.json();
+          }
+          await fetchItems();
+          showToast('Éléments restaurés', 'success');
+        } catch (err) {
+          showToast('Erreur restauration: ' + err.message, 'error');
+        }
+      }
+
+      async function bulkDeleteSelected() {
+  const ids = selectedIds;
+        if (!ids.length) return;
+        // Récupérer les éléments complets pour Undo
+        const itemsMap = new Map(items.map(it => [it._id, it]));
+        const toDelete = ids.map(id => itemsMap.get(id)).filter(Boolean);
+        const ok = window.confirm(`Supprimer définitivement ${toDelete.length} élément(s) ?\nVous pourrez annuler juste après.`);
+        if (!ok) return;
+        try {
+          const results = await Promise.allSettled(ids.map(id => fetch(`/api/equipment/${id}`, { method: 'DELETE' }).then(r => r.json())));
+          const successCount = results.filter(r => r.status === 'fulfilled' && r.value && r.value.success).length;
+          const failedCount = ids.length - successCount;
+          clearSelection();
+          await fetchItems();
+          const deletedOkItems = toDelete.slice(0, successCount); // approximation acceptable
+          showToast(
+            `Suppression: ${successCount} réussi(s)${failedCount ? `, ${failedCount} échec(s)` : ''}`,
+            failedCount ? 'warning' : 'success',
+            8000,
+            deletedOkItems.length ? (
+              <button className="undo" onClick={() => restoreItems(deletedOkItems)}>Annuler la suppression</button>
+            ) : null
+          );
+        } catch (err) {
+          showToast('Erreur suppression de masse: ' + err.message, 'error');
+        }
+      }
+
+      function exportCSV() {
+        const filtered = getFilteredItems();
+        if (!filtered || !filtered.length) return showToast('Aucune donnée à exporter', 'error');
+        const headers = ['asset_id','description','category','location','responsible','purchase_date','purchase_price','currency','condition','created_at'];
+        const rows = [headers.join(',')];
+        filtered.forEach(it => {
+          const line = headers.map(h => '"'+String(it[h] || '').replace(/"/g,'""')+'"').join(',');
+          rows.push(line);
+        });
+        const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'equipments.csv'; document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Export CSV téléchargé', 'success');
+      }
+
+      function exportXLSX() {
+        const filtered = getFilteredItems();
+        if (!filtered || !filtered.length) return showToast('Aucune donnée à exporter', 'error');
+        if (!window.XLSX) return showToast('XLSX library non chargée', 'error');
+        const ws = window.XLSX.utils.json_to_sheet(filtered);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'Equipements');
+        window.XLSX.writeFile(wb, 'equipments.xlsx');
+        showToast('Export XLSX téléchargé', 'success');
+      }
+
+      function printAllDataPDF() {
+        const filtered = getFilteredItems();
+        if (!filtered || !filtered.length) return showToast('Aucune donnée à imprimer', 'error');
+        
+        // Créer le contenu HTML pour l'impression
+        const printContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Rapport d'Inventaire FPS</title>
+            <style>
+              @page { size: A4 landscape; margin: 15mm; }
+              body { 
+                font-family: Arial, sans-serif; 
+                font-size: 10px;
+                margin: 0;
+                padding: 20px;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 3px solid #0b5ed7;
+                padding-bottom: 15px;
+              }
+              .header h1 {
+                color: #1a472a;
+                margin: 5px 0;
+                font-size: 18px;
+              }
+              .header h2 {
+                color: #0b5ed7;
+                margin: 5px 0;
+                font-size: 16px;
+              }
+              .header p {
+                margin: 3px 0;
+                color: #666;
+                font-size: 11px;
+              }
+              table { 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-top: 10px;
+              }
+              th { 
+                background: #0b5ed7; 
+                color: white; 
+                padding: 8px 5px;
+                text-align: left;
+                font-size: 9px;
+                font-weight: bold;
+                border: 1px solid #084298;
+              }
+              td { 
+                padding: 6px 5px;
+                border: 1px solid #ddd;
+                font-size: 9px;
+              }
+              tr:nth-child(even) { background: #f8f9fa; }
+              tr:hover { background: #e9ecef; }
+              .footer {
+                margin-top: 20px;
+                text-align: center;
+                font-size: 9px;
+                color: #666;
+                border-top: 2px solid #0b5ed7;
+                padding-top: 10px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>🏛️ Ministère de la Santé Publique, Hygiène et Prévoyance Sociale</h1>
+              <h2>FPS — Rapport d'Inventaire des Équipements</h2>
+              <p>Date d'impression: ${new Date().toLocaleDateString('fr-FR', { 
+                year: 'numeric', month: 'long', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+              })}</p>
+              <p>Nombre total d'équipements: ${filtered.length}</p>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Asset ID</th>
+                  <th>Description</th>
+                  <th>Catégorie</th>
+                  <th>Localisation</th>
+                  <th>Responsable</th>
+                  <th>Date d'achat</th>
+                  <th>Prix</th>
+                  <th>Devise</th>
+                  <th>État</th>
+                  <th>Alerte</th>
+                  <th>Créé le</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filtered.map((item, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.asset_id || ''}</td>
+                    <td>${item.description || ''}</td>
+                    <td>${item.category || ''}</td>
+                    <td>${item.location || ''}</td>
+                    <td>${item.responsible || ''}</td>
+                    <td>${item.purchase_date || ''}</td>
+                    <td>${item.purchase_price || ''}</td>
+                    <td>${item.currency || ''}</td>
+                    <td>${item.condition || ''}</td>
+                    <td>${item.alert || ''}</td>
+                    <td>${item.created_at || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            <div class="footer">
+              <p>© 2025 FPS • Système de Gestion des Équipements • République Démocratique du Congo</p>
+            </div>
+          </body>
+          </html>
+        `;
+        
+        // Ouvrir une nouvelle fenêtre et imprimer
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Attendre que le contenu soit chargé puis lancer l'impression
+        printWindow.onload = function() {
+          printWindow.focus();
+          printWindow.print();
+          showToast('Impression lancée - ' + filtered.length + ' équipements', 'success');
+        };
+      }
+
+      return (
+  <div className={`container ${tableFullscreen ? 'wide' : ''}`}>
+          {toast.show && (
+            <div className={`toast ${toast.type}`}>
+              <span>{toast.msg}</span>
+              {toast.action}
+            </div>
+          )}
+          
+          <div className="ministry-header">
+            <div className="ministry-seal">🏛️</div>
+            <div className="ministry-info">
+              <p className="ministry-country">République Démocratique du Congo</p>
+              <h3 className="ministry-title">Ministère de la Santé Publique,</h3>
+              <h3 className="ministry-subtitle">Hygiène et Prévoyance Sociale</h3>
+            </div>
+          </div>
+          
+          <header className="app-header">
+            <div className="header-title-section">
+              <img src="/assets/fps-logo.png" alt="FPS Logo" className="app-logo" onError={(e) => e.target.style.display='none'} />
+              <div className="header-text">
+                <h1>FPS — Gestion des Équipements</h1>
+                <p className="header-tagline">Système Intégré de Gestion d'Inventaire</p>
+              </div>
+            </div>
+            <div className="header-actions">
+              {logged && <button onClick={() => { setShowList(true); fetchItems(); }}>📋 Liste</button>}
+              {logged && <button onClick={() => setShowList(false)}>📝 Formulaire</button>}
+              {logged && <button onClick={logout}>🚪 Déconnexion</button>}
+              {logged && <div className="status">✓ Administrateur</div>}
+            </div>
+          </header>
+
+          {!logged ? (
+            <div className="main-content">
+              <div className="login-container">
+                <div className="login-box">
+                  <div className="login-icon">🔐</div>
+                  <h2>Connexion Administrateur</h2>
+                  <p className="login-subtitle">Veuillez vous identifier pour accéder au système de gestion</p>
+                  
+                  <form onSubmit={handleLogin} className="login-form">
+                    <div className="form-group">
+                      <label htmlFor="password">Mot de passe</label>
+                      <input 
+                        id="password"
+                        type="password" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Entrez votre mot de passe"
+                        autoFocus
+                        required
+                      />
+                    </div>
+                    
+                    {loginError && <div className="login-error">⚠️ {loginError}</div>}
+                    <button type="submit" className="login-button">
+                      Se connecter
+                    </button>
+                  </form>
+                  
+                  <div className="login-footer">
+                    <p>🛡️ Accès sécurisé • FPS Inventory System</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="copyright">
+                © <strong>2025 FPS</strong> <span className="copyright-icon">•</span> Tous droits réservés <span className="copyright-icon">•</span> Système de Gestion des Équipements
+              </div>
+            </div>
+          ) : showList ? (
+            <div className="main-content">
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:15}}>
+                <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+                  <input placeholder="Recherche..." value={searchText} onChange={e => setSearchText(e.target.value)} style={{padding:6, borderRadius:4, border:'1px solid #ddd'}} />
+                  <select value={conditionFilter} onChange={e => setConditionFilter(e.target.value)}>
+                    <option value="">Tous états</option>
+                    {[...new Set(items.map(it => it.condition).filter(Boolean))].map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <label style={{fontSize:12}}>De <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></label>
+                  <label style={{fontSize:12}}>À <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></label>
+                  <div className="view-toggle">
+                    <button type="button" className={`btn-toggle btn-sm ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')} title="Afficher en liste/tableau">📊 Liste</button>
+                    <button type="button" className={`btn-toggle btn-sm ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')} title="Afficher en grille">� Grille</button>
+                  </div>
+                  <button onClick={fetchItems}>🔄 Rafraîchir</button>
+                  <button onClick={() => setTableFullscreen(!tableFullscreen)}>
+                    {tableFullscreen ? '⤢ Réduire' : '⛶ Plein écran'}
+                  </button>
+                </div>
+                <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+                  <button onClick={printAllDataPDF} style={{background:'#dc3545', border:'none'}}>🖨️ Imprimer PDF</button>
+                  <button onClick={exportCSV} style={{background:'#198754', border:'none'}}>📄 Export CSV</button>
+                  <button onClick={exportXLSX} style={{background:'#0d6efd', border:'none'}}>📊 Export Excel</button>
+                  <button onClick={bulkDeleteSelected} disabled={selectedIds.size===0} style={{background:'#dc3545', border:'none'}}>
+                    🗑️ Supprimer sélection ({selectedIds.size || 0})
+                  </button>
+                  <button onClick={() => { setShowList(false); setEditingId(null); setForm({...initialValues, asset_id: generateAssetId()}); }}>➕ Nouvel équipement</button>
+                </div>
+              </div>
+
+              {/* Render filtered items as table or grid */}
+              {viewMode === 'table' ? (
+                <div
+                  className="table-scroll-container"
+                  style={{overflowX:'auto', scrollBehavior:'smooth'}}
+                  ref={tableScrollRef}
+                  onMouseDown={onDragStart}
+                  onMouseMove={onDragMove}
+                  onMouseUp={onDragEnd}
+                  onMouseLeave={onDragEnd}
+                  onTouchStart={onDragStart}
+                  onTouchMove={onDragMove}
+                  onTouchEnd={onDragEnd}
+                  onWheel={onWheel}
+                >
+                  <table style={{width:'100%', marginTop:12, borderCollapse:'collapse', minWidth:'1850px'}}>
+                    <thead>
+                      <tr>
+                        <th className="select-col" title="Tout sélectionner (page)">
+                          <input type="checkbox" onChange={selectAllCurrentPage}
+                            checked={getPaginatedItems(getFilteredItems()).every(it => selectedIds.includes(it._id)) && getPaginatedItems(getFilteredItems()).length > 0}
+                          />
+                        </th>
+                        <th>#</th>
+                        <th>Asset ID</th>
+                        <th>Description</th>
+                        <th>Catégorie</th>
+                        <th>Localisation</th>
+                        <th>Responsable</th>
+                        <th>Date d'achat</th>
+                        <th>Prix d'achat</th>
+                        <th>Devise</th>
+                        <th>Durée vie utile</th>
+                        <th>Méthode amort.</th>
+                        <th>Taux dépr.</th>
+                        <th>Amort. cumulé</th>
+                        <th>Valeur nette</th>
+                        <th>État</th>
+                        <th>Alerte</th>
+                        <th>Remarques</th>
+                        <th>Créé le</th>
+                        <th className="table-actions">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getPaginatedItems(getFilteredItems()).map((it, i) => (
+                        <tr key={it._id} style={{borderBottom:'1px solid #eee'}}>
+                          <td className="select-col" style={{textAlign:'center'}}>
+                            <input type="checkbox" checked={isSelected(it._id)} onChange={() => toggleSelect(it._id)} />
+                          </td>
+                          <td>{i+1}</td>
+                          <td>{it.asset_id}</td>
+                          <td>{it.description}</td>
+                          <td>{it.category}</td>
+                          <td>{it.location}</td>
+                          <td>{it.responsible}</td>
+                          <td>{it.purchase_date}</td>
+                          <td>{it.purchase_price}</td>
+                          <td>{it.currency}</td>
+                          <td>{it.useful_life}</td>
+                          <td>{it.depreciation_method}</td>
+                          <td>{it.depreciation_rate}</td>
+                          <td>{it.accumulated_depreciation}</td>
+                          <td>{it.net_book_value}</td>
+                          <td>{it.condition}</td>
+                          <td>{it.alert}</td>
+                          <td>{it.remarks}</td>
+                          <td>{it.created_at}</td>
+                          <td className="actions-cell" style={{whiteSpace:'nowrap'}}>
+                            <button className="btn-secondary btn-sm" title="Modifier cet élément" onClick={() => startEdit(it)}>✏️ Modifier</button>
+                            <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it._id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
+                          </td>
+                        </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+              ) : (
+                <div className="grid-view">
+                  {getPaginatedItems(getFilteredItems()).map((it, i) => (
+                    <div key={it._id} className="card">
+                      <input className="card-select" type="checkbox" checked={isSelected(it._id)} onChange={() => toggleSelect(it._id)} title="Sélectionner" />
+                      <h3>{it.asset_id}</h3>
+                      <p><strong>Description:</strong> {it.description}</p>
+                      <p><strong>Catégorie:</strong> {it.category}</p>
+                      <p><strong>Localisation:</strong> {it.location}</p>
+                      <p><strong>Responsable:</strong> {it.responsible}</p>
+                      <p><strong>Date d'achat:</strong> {it.purchase_date}</p>
+                      <p><strong>Prix:</strong> {it.purchase_price} {it.currency}</p>
+                      <p><strong>Durée de vie:</strong> {it.useful_life} ans</p>
+                      <p><strong>Méthode amort.:</strong> {it.depreciation_method}</p>
+                      <p><strong>Taux dépr.:</strong> {it.depreciation_rate}%</p>
+                      <p><strong>Amort. cumulé:</strong> {it.accumulated_depreciation}</p>
+                      <p><strong>Valeur nette:</strong> {it.net_book_value}</p>
+                      <p><strong>État:</strong> {it.condition}</p>
+                      {it.alert && <p><strong>Alerte:</strong> {it.alert}</p>}
+                      {it.remarks && <p><strong>Remarques:</strong> {it.remarks}</p>}
+                      <p style={{fontSize:12, color:'#666', marginTop:8}}>Créé le: {it.created_at}</p>
+                      <div style={{marginTop:8}}>
+                        <button className="btn-secondary btn-sm" title="Modifier cet élément" onClick={() => startEdit(it)}>✏️ Modifier</button>
+                        <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it._id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="main-content">
+              {/* Instructions */}
+              <div className="instructions-box">
+                <h3>📝 Instructions</h3>
+                <ul>
+                  <li>Remplissez tous les champs obligatoires marqués d'un astérisque (*)</li>
+                  <li>Un ID unique sera généré automatiquement pour chaque équipement</li>
+                  <li>Après validation, vous pourrez imprimer l'étiquette QR code</li>
+                  <li>L'étiquette contient le QR code, le logo FPS et le numéro d'inventaire</li>
+                </ul>
+                <div className="instructions-actions">
+                  <button type="button" className="btn-view-list" onClick={() => { setShowList(true); fetchItems(); }}>
+                    📊 Voir la Base de Données
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={submit} className="form">
+                <h2 className="form-main-title">📋 Formulaire d'Enregistrement d'Équipement</h2>
+                
+                <table className="form-table">
+                  <thead>
+                    <tr>
+                      <th className="category-header">🏷️ Identification</th>
+                      <th className="category-header">📍 Localisation</th>
+                      <th className="category-header">💰 Finances</th>
+                      <th className="category-header">📊 Amortissement</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="form-cell" data-label="🏷️ Identification">
+                        <div className="form-group-table">
+                          <label>Asset ID <span className="required">*</span></label>
+                          <input name="asset_id" value={form.asset_id} onChange={onChange} required readOnly style={{background:'#f0f0f0'}} />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Description <span className="required">*</span></label>
+                          <textarea name="description" value={form.description} onChange={onChange} required placeholder="Description détaillée..." rows="3" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Catégorie <span className="required">*</span></label>
+                          <input name="category" value={form.category} onChange={onChange} required placeholder="Ex: Mobilier..." />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Condition <span className="required">*</span></label>
+                          <select name="condition" value={form.condition} onChange={onChange} required>
+                            <option value="">-- Sélectionner --</option>
+                            <option value="Neuf">Neuf</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Bon">Bon</option>
+                            <option value="Moyen">Moyen</option>
+                            <option value="Mauvais">Mauvais</option>
+                          </select>
+                        </div>
+                      </td>
+                      
+                      <td className="form-cell" data-label="📍 Localisation">
+                        <div className="form-group-table">
+                          <label>Emplacement <span className="required">*</span></label>
+                          <input name="location" value={form.location} onChange={onChange} required placeholder="Bureau, Étage..." />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Responsable <span className="required">*</span></label>
+                          <input name="responsible" value={form.responsible} onChange={onChange} required placeholder="Nom complet" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Alerte</label>
+                          <input name="alert" value={form.alert} onChange={onChange} placeholder="Notes..." />
+                        </div>
+                      </td>
+                      
+                      <td className="form-cell" data-label="💰 Finances">
+                        <div className="form-group-table">
+                          <label>Date d'achat <span className="required">*</span></label>
+                          <input name="purchase_date" type="date" value={form.purchase_date} onChange={onChange} required />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Prix d'achat <span className="required">*</span></label>
+                          <input name="purchase_price" type="number" step="0.01" value={form.purchase_price} onChange={onChange} required placeholder="0.00" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Devise <span className="required">*</span></label>
+                          <select name="currency" value={form.currency} onChange={onChange} required>
+                            <option value="USD">USD</option>
+                            <option value="CDF">CDF</option>
+                          </select>
+                        </div>
+                      </td>
+                      
+                      <td className="form-cell" data-label="📊 Amortissement">
+                        <div className="form-group-table">
+                          <label>Durée vie (ans) <span className="required">*</span></label>
+                          <input name="useful_life" type="number" value={form.useful_life} onChange={onChange} required placeholder="5" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Méthode <span className="required">*</span></label>
+                          <input name="depreciation_method" value={form.depreciation_method} onChange={onChange} required placeholder="Linéaire" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Taux (%) <span className="required">*</span></label>
+                          <input name="depreciation_rate" type="number" step="0.01" value={form.depreciation_rate} onChange={onChange} required placeholder="0.00" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Amort. cumulé <span className="required">*</span></label>
+                          <input name="accumulated_depreciation" type="number" step="0.01" value={form.accumulated_depreciation} onChange={onChange} required placeholder="0.00" />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Valeur nette <span className="required">*</span></label>
+                          <input name="net_book_value" type="number" step="0.01" value={form.net_book_value} onChange={onChange} required placeholder="0.00" />
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                
+                {/* Remarques en pleine largeur sous le tableau */}
+                <div className="form-section-remarks">
+                  <h3 className="form-section-title">📋 Remarques</h3>
+                  <div className="form-group-table">
+                    <label>Remarques additionnelles</label>
+                    <textarea name="remarks" value={form.remarks} onChange={onChange} placeholder="Informations complémentaires..." rows="3" />
+                  </div>
+                </div>
+
+                <div className="actions">
+                  <button type="submit">✓ {editingId ? 'Enregistrer les modifications' : 'Valider et Créer'}</button>
+                  <button type="button" onClick={printLabel}>🖨️ Imprimer QR</button>
+                  {editingId && <button type="button" onClick={() => { setEditingId(null); setForm({...initialValues, asset_id: generateAssetId()}); }}>✕ Annuler</button>}
+                </div>
+
+                {message && <div className={`message ${message.includes('Erreur') ? 'error' : 'success'}`}>{message}</div>}
+              </form>
+
+              <div id="label-container" className="label-container" style={{display: 'none'}}>
+                <div className="label-header">
+                  <h3>🏷️ Aperçu de l'Étiquette QR</h3>
+                  <p>Cliquez sur "Imprimer QR" pour lancer l'impression au format 6cm × 5cm</p>
+                </div>
+                <div id="label" className="qr-label">
+                  <div id="qrcode" className="qr-code"></div>
+                  <img src="/assets/fps-logo.png" alt="Logo FPS" className="logo"/>
+                  <div className="asset-id"></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>

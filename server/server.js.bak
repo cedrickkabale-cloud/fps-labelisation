@@ -1,0 +1,61 @@
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+
+const DB_PATH = path.join(__dirname, 'db.json');
+
+function readDB() {
+  try {
+    const raw = fs.readFileSync(DB_PATH, 'utf8');
+    return JSON.parse(raw);
+  } catch (err) {
+    return { lastId: 0, equipment: [] };
+  }
+}
+
+function writeDB(db) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf8');
+}
+
+// Serve static client files
+app.use('/', express.static(path.join(__dirname, '..', 'public')));
+app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));
+
+// API endpoints
+app.get('/api/equipment', (req, res) => {
+  const db = readDB();
+  res.json(db.equipment);
+});
+
+app.post('/api/equipment', (req, res) => {
+  const db = readDB();
+  const item = req.body;
+
+  // Basic validation: ensure asset_id
+  if (!item.asset_id) {
+    return res.status(400).json({ success: false, error: 'asset_id missing' });
+  }
+
+  db.lastId = (db.lastId || 0) + 1;
+  item._id = db.lastId;
+  item.created_at = new Date().toISOString();
+
+  db.equipment.push(item);
+  writeDB(db);
+
+  res.json({ success: true, item });
+});
+
+// Simple health check
+app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+app.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});

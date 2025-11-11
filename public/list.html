@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Liste des équipements — FPS</title>
+  <link rel="stylesheet" href="/public/style.css">
+  <style>
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #e6e6e6; padding: 8px; text-align: left; }
+    th { background: #f7f7fb; }
+    .controls { display:flex; gap:8px; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="display:flex; justify-content:space-between; align-items:center;">
+      <h1 style="margin:0">Liste des équipements</h1>
+      <div class="controls">
+        <a href="/" style="text-decoration:none; color:#0b5ed7; font-weight:600">Retour</a>
+        <button id="refresh">Rafraîchir</button>
+        <a id="open-json" href="/api/equipment" target="_blank">Ouvrir JSON</a>
+      </div>
+    </header>
+
+    <div id="content">
+      <div id="loading">Chargement…</div>
+      <table id="equip-table" style="display:none">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Asset ID</th>
+            <th>Description</th>
+            <th>Catégorie</th>
+            <th>Localisation</th>
+            <th>Responsable</th>
+            <th>Prix</th>
+            <th>État</th>
+            <th>Créé</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    async function fetchList() {
+      const loading = document.getElementById('loading');
+      const table = document.getElementById('equip-table');
+      const tbody = table.querySelector('tbody');
+      loading.style.display = '';
+      table.style.display = 'none';
+      try {
+        const res = await fetch('/api/equipment');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const items = await res.json();
+        tbody.innerHTML = '';
+        items.forEach((it, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${i+1}</td>
+            <td>${escapeHtml(it.asset_id || '')}</td>
+            <td>${escapeHtml(it.description || '')}</td>
+            <td>${escapeHtml(it.category || '')}</td>
+            <td>${escapeHtml(it.location || '')}</td>
+            <td>${escapeHtml(it.responsible || '')}</td>
+            <td>${escapeHtml(it.purchase_price || '')}</td>
+            <td>${escapeHtml(it.condition || '')}</td>
+            <td>${escapeHtml(it.created_at || '')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        loading.style.display = 'none';
+        table.style.display = '';
+      } catch (err) {
+        loading.textContent = 'Erreur lors du chargement : ' + err.message;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    document.getElementById('refresh').addEventListener('click', fetchList);
+    // initial load
+    fetchList();
+  </script>
+</body>
+</html>
