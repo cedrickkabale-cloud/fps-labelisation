@@ -4,7 +4,7 @@ const cors = require('cors');
 const db = require('./db');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -75,6 +75,6 @@ app.delete('/api/equipment/:id', async (req, res) => {
 // Simple health check
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });
