@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.mysql.sql": "sql",
+    "database.mysql.sql": "sql"
+  },
+  "mssql.enableIntellisense": false
+}
