@@ -109,7 +109,7 @@
     if (!el) return;
     // Convertir la molette verticale en défilement horizontal quand pertinent
     if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
-      e.preventDefault();
+      // Pas de preventDefault pour éviter les erreurs passive listener
       el.scrollLeft += e.deltaY;
     }
   };
@@ -734,7 +734,6 @@
                   onTouchStart={onDragStart}
                   onTouchMove={onDragMove}
                   onTouchEnd={onDragEnd}
-                  onWheel={onWheel}
                 >
                   <table style={{width:'100%', marginTop:12, borderCollapse:'collapse', minWidth:'1850px'}}>
                     <thead>
