@@ -4,8 +4,14 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(express.static('public'));
-app.use('/assets', express.static('assets'));
+app.use(express.static('public', {
+  maxAge: '1d',
+  etag: false
+}));
+app.use('/assets', express.static('assets', {
+  maxAge: '1d',
+  etag: false
+}));
 
 // Base de données en mémoire
 let database = {
@@ -58,6 +64,19 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     equipmentCount: database.equipment.length
   });
+});
+
+// Routes pour assets
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
+app.get('/fps-logo.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'fps-logo.png'));
+});
+
+app.get('/style.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'style.css'));
 });
 
 // Route principale
