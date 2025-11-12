@@ -1,0 +1,13 @@
+{
+  "name": "fps-labelisation",
+  "version": "1.0.0",
+  "description": "FPS Equipment Management System",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "cd server && npm start",
+    "build": "cd server && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
