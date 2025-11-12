@@ -75,6 +75,26 @@ app.delete('/api/equipment/:id', async (req, res) => {
 // Simple health check
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server listening on http://0.0.0.0:${PORT}`);
+// Root health check for Render
+app.get('/', (req, res) => {
+  // Si c'est une requête pour l'API health, on répond JSON
+  if (req.get('Accept') && req.get('Accept').includes('application/json')) {
+    return res.json({ status: 'OK', service: 'FPS Labelisation' });
+  }
+  // Sinon on sert le fichier index.html
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Server listening on http://0.0.0.0:${PORT}`);
+  console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ Static files served from: ${path.join(__dirname, '..', 'public')}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Process terminated');
+  });
 });
