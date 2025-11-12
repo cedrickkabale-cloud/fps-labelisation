@@ -5,6 +5,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/assets', express.static('assets'));
 
 // Base de données en mémoire
 let database = {
