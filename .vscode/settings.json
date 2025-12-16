@@ -3,5 +3,9 @@
     "*.mysql.sql": "sql",
     "database.mysql.sql": "sql"
   },
-  "mssql.enableIntellisense": false
+  "mssql.enableIntellisense": false,
+  "[sql]": {
+    "editor.defaultFormatter": null
+  },
+  "mssql.lintingEnabled": false
 }

@@ -29,32 +29,32 @@ app.post('/api/equipment', (req, res) => {
   const newItem = {
     _id: String(database.lastId),
     ...req.body,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
   database.equipment.push(newItem);
-  res.status(201).json(newItem);
+  res.status(201).json({ success: true, item: newItem });
 });
 
 app.put('/api/equipment/:id', (req, res) => {
   const index = database.equipment.findIndex(item => item._id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Not found' });
+  if (index === -1) return res.status(404).json({ success: false, error: 'Not found' });
   
   database.equipment[index] = {
     ...database.equipment[index],
     ...req.body,
     _id: req.params.id,
-    updatedAt: new Date().toISOString()
+    updated_at: new Date().toISOString()
   };
-  res.json(database.equipment[index]);
+  res.json({ success: true, item: database.equipment[index] });
 });
 
 app.delete('/api/equipment/:id', (req, res) => {
   const index = database.equipment.findIndex(item => item._id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'Not found' });
+  if (index === -1) return res.status(404).json({ success: false, error: 'Not found' });
   
   database.equipment.splice(index, 1);
-  res.json({ message: 'Deleted successfully' });
+  res.json({ success: true, message: 'Deleted successfully' });
 });
 
 app.get('/api/test', (req, res) => {
@@ -83,6 +83,14 @@ app.get('/style.css', (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Démarrer le serveur en local
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`✅ Serveur lancé sur http://localhost:${PORT}`);
+  });
+}
 
 // Export pour Vercel
 module.exports = app;
