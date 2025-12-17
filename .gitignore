@@ -4,3 +4,5 @@ node_modules/
 .DS_Storedatabase.mysql.sql
 .vscode/
 package-lock.json
+.vercel
+.env*.local
