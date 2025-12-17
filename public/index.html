@@ -266,7 +266,7 @@
       }
 
       function startEdit(item) {
-        setEditingId(item._id);
+        setEditingId(item.id);
         // copy only the known form fields
         const copy = {...form};
         Object.keys(initialValues).forEach(k => { copy[k] = item[k] || ''; });
@@ -303,12 +303,12 @@
       async function deleteItem(id) {
         try {
           // Confirmation avant suppression
-          const item = items.find(it => it._id === id);
+          const item = items.find(it => it.id === id);
           const label = item ? `${item.asset_id || ''} — ${item.description || ''}`.trim() : '';
           const ok = window.confirm(`Confirmer la suppression définitive${label ? ` de\n${label}` : ''} ?\nVous pourrez annuler juste après.`);
           if (!ok) return;
           // Find the item before deletion
-          const itemToDelete = item || items.find(it => it._id === id);
+          const itemToDelete = item || items.find(it => it.id === id);
           if (!itemToDelete) return;
 
           const res = await fetch(`/api/equipment/${id}`, { method: 'DELETE' });
@@ -336,8 +336,8 @@
       async function restoreItem(item) {
         try {
           if (!item) return;
-          // Remove _id to create as new item
-          const { _id, created_at, ...itemData } = item;
+          // Remove id to create as new item
+          const { id, created_at, ...itemData } = item;
           const res = await fetch('/api/equipment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -397,11 +397,11 @@
       }
       function selectAllCurrentPage() {
         const pageItems = getPaginatedItems(getFilteredItems());
-        const allSelected = pageItems.every(it => selectedIds.includes(it._id));
+        const allSelected = pageItems.every(it => selectedIds.includes(it.id));
         if (allSelected) {
-          setSelectedIds(prev => prev.filter(id => !pageItems.some(it => it._id === id)));
+          setSelectedIds(prev => prev.filter(id => !pageItems.some(it => it.id === id)));
         } else {
-          const newIds = pageItems.map(it => it._id).filter(id => !selectedIds.includes(id));
+          const newIds = pageItems.map(it => it.id).filter(id => !selectedIds.includes(id));
           setSelectedIds(prev => [...prev, ...newIds]);
         }
       }
@@ -410,7 +410,7 @@
       async function restoreItems(itemsArray) {
         try {
           for (const item of itemsArray) {
-            const { _id, created_at, ...itemData } = item;
+            const { id, created_at, ...itemData } = item;
             const res = await fetch('/api/equipment', {
               method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itemData)
             });
@@ -427,7 +427,7 @@
   const ids = selectedIds;
         if (!ids.length) return;
         // Récupérer les éléments complets pour Undo
-        const itemsMap = new Map(items.map(it => [it._id, it]));
+        const itemsMap = new Map(items.map(it => [it.id, it]));
         const toDelete = ids.map(id => itemsMap.get(id)).filter(Boolean);
         const ok = window.confirm(`Supprimer définitivement ${toDelete.length} élément(s) ?\nVous pourrez annuler juste après.`);
         if (!ok) return;
@@ -743,7 +743,7 @@
                       <tr>
                         <th className="select-col" title="Tout sélectionner (page)">
                           <input type="checkbox" onChange={selectAllCurrentPage}
-                            checked={getPaginatedItems(getFilteredItems()).every(it => selectedIds.includes(it._id)) && getPaginatedItems(getFilteredItems()).length > 0}
+                            checked={getPaginatedItems(getFilteredItems()).every(it => selectedIds.includes(it.id)) && getPaginatedItems(getFilteredItems()).length > 0}
                           />
                         </th>
                         <th>#</th>
@@ -770,9 +770,9 @@
                     </thead>
                     <tbody>
                       {getPaginatedItems(getFilteredItems()).map((it, i) => (
-                        <tr key={it._id} style={{borderBottom:'1px solid #eee'}}>
+                        <tr key={it.id} style={{borderBottom:'1px solid #eee'}}>
                           <td className="select-col" style={{textAlign:'center'}}>
-                            <input type="checkbox" checked={isSelected(it._id)} onChange={() => toggleSelect(it._id)} />
+                            <input type="checkbox" checked={isSelected(it.id)} onChange={() => toggleSelect(it.id)} />
                           </td>
                           <td>{i+1}</td>
                           <td>{it.asset_id}</td>
@@ -795,7 +795,7 @@
                           <td>{it.created_at}</td>
                           <td className="actions-cell" style={{whiteSpace:'nowrap'}}>
                             <button className="btn-secondary btn-sm" title="Modifier cet élément" onClick={() => startEdit(it)}>✏️ Modifier</button>
-                            <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it._id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
+                            <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it.id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
                           </td>
                         </tr>
                   ))}
@@ -805,8 +805,8 @@
               ) : (
                 <div className="grid-view">
                   {getPaginatedItems(getFilteredItems()).map((it, i) => (
-                    <div key={it._id} className="card">
-                      <input className="card-select" type="checkbox" checked={isSelected(it._id)} onChange={() => toggleSelect(it._id)} title="Sélectionner" />
+                    <div key={it.id} className="card">
+                      <input className="card-select" type="checkbox" checked={isSelected(it.id)} onChange={() => toggleSelect(it.id)} title="Sélectionner" />
                       <h3>{it.asset_id}</h3>
                       {it.account_code && <p><strong>Code de Compte:</strong> {it.account_code}</p>}
                       <p><strong>Description:</strong> {it.description}</p>
@@ -826,7 +826,7 @@
                       <p style={{fontSize:12, color:'#666', marginTop:8}}>Créé le: {it.created_at}</p>
                       <div style={{marginTop:8}}>
                         <button className="btn-secondary btn-sm" title="Modifier cet élément" onClick={() => startEdit(it)}>✏️ Modifier</button>
-                        <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it._id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
+                        <button className="btn-danger btn-sm" title="Supprimer définitivement" onClick={() => deleteItem(it.id)} style={{marginLeft:6}}>🗑️ Supprimer</button>
                       </div>
                     </div>
                   ))}

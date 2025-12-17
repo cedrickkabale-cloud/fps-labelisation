@@ -1,5 +1,7 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const db = require('./db');
 const app = express();
 
 // Middleware
@@ -13,57 +15,66 @@ app.use('/assets', express.static('assets', {
   etag: false
 }));
 
-// Base de données en mémoire
-let database = {
-  lastId: 0,
-  equipment: []
-};
-
-// Routes API
-app.get('/api/equipment', (req, res) => {
-  res.json(database.equipment || []);
+// Routes API avec Cosmos DB
+app.get('/api/equipment', async (req, res) => {
+  try {
+    const equipment = await db.getAllEquipment();
+    res.json(equipment);
+  } catch (error) {
+    console.error('Erreur GET /api/equipment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-app.post('/api/equipment', (req, res) => {
-  database.lastId = (database.lastId || 0) + 1;
-  const newItem = {
-    _id: String(database.lastId),
-    ...req.body,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-  database.equipment.push(newItem);
-  res.status(201).json({ success: true, item: newItem });
+app.post('/api/equipment', async (req, res) => {
+  try {
+    const newItem = await db.createEquipment(req.body);
+    res.status(201).json({ success: true, item: newItem });
+  } catch (error) {
+    console.error('Erreur POST /api/equipment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
-app.put('/api/equipment/:id', (req, res) => {
-  const index = database.equipment.findIndex(item => item._id === req.params.id);
-  if (index === -1) return res.status(404).json({ success: false, error: 'Not found' });
-  
-  database.equipment[index] = {
-    ...database.equipment[index],
-    ...req.body,
-    _id: req.params.id,
-    updated_at: new Date().toISOString()
-  };
-  res.json({ success: true, item: database.equipment[index] });
+app.put('/api/equipment/:id', async (req, res) => {
+  try {
+    const updatedItem = await db.updateEquipment(req.params.id, req.body);
+    res.json({ success: true, item: updatedItem });
+  } catch (error) {
+    console.error('Erreur PUT /api/equipment:', error);
+    const status = error.message === 'Equipment not found' ? 404 : 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
 });
 
-app.delete('/api/equipment/:id', (req, res) => {
-  const index = database.equipment.findIndex(item => item._id === req.params.id);
-  if (index === -1) return res.status(404).json({ success: false, error: 'Not found' });
-  
-  database.equipment.splice(index, 1);
-  res.json({ success: true, message: 'Deleted successfully' });
+app.delete('/api/equipment/:id', async (req, res) => {
+  try {
+    await db.deleteEquipment(req.params.id);
+    res.json({ success: true, message: 'Deleted successfully' });
+  } catch (error) {
+    console.error('Erreur DELETE /api/equipment:', error);
+    const status = error.message === 'Equipment not found' ? 404 : 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
 });
 
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'FPS Labelisation API working!',
-    timestamp: new Date().toISOString(),
-    equipmentCount: database.equipment.length
-  });
+app.get('/api/test', async (req, res) => {
+  try {
+    const count = await db.countEquipment();
+    res.json({ 
+      status: 'OK', 
+      message: 'FPS Labelisation API working with Cosmos DB!',
+      timestamp: new Date().toISOString(),
+      equipmentCount: count,
+      database: 'Azure Cosmos DB'
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Routes pour assets
