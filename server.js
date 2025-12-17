@@ -81,7 +81,10 @@ app.get('/fps-logo.png', (req, res) => {
 // Also expose an SVG logo for modern browsers and CSS backgrounds
 app.get('/fps-logo.svg', (req, res) => {
   res.type('image/svg+xml');
-  res.sendFile(path.join(__dirname, 'assets', 'fps-logo.svg'));
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'public', 'fps-logo.svg'));
 });
 
 app.get('/style.css', (req, res) => {
@@ -96,8 +99,9 @@ app.get('/', (req, res) => {
 // Démarrer le serveur en local
 if (!process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`✅ Serveur lancé sur http://localhost:${PORT}`);
+  const HOST = process.env.HOST || '0.0.0.0';
+  app.listen(PORT, HOST, () => {
+    console.log(`✅ Serveur lancé sur http://${HOST}:${PORT}`);
   });
 }
 

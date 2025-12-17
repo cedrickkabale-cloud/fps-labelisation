@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Gradient background -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a472a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2d5f3f;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded rect -->
+  <rect width="256" height="256" rx="40" ry="40" fill="url(#bgGrad)" />
+  
+  <!-- Gold border -->
+  <rect x="10" y="10" width="236" height="236" rx="35" ry="35" fill="none" stroke="#d4af37" stroke-width="4" />
+  
+  <!-- White text FPS -->
+  <text x="128" y="155" font-family="Arial, Helvetica, sans-serif" font-size="95" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">FPS</text>
+</svg>

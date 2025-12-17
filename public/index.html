@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FPS - Labelisation QR</title>
-  <link rel="icon" href="/fps-logo.svg?v=2" type="image/svg+xml">
+  <link rel="icon" href="/fps-logo.svg?v=4" type="image/svg+xml">
   <link rel="stylesheet" href="/style.css">
   <!-- QRCode lib -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -31,6 +31,7 @@
     function App() {
       const initialValues = {
         asset_id: generateAssetId(),
+        account_code: '',
         description: '',
         category: '',
         location: '',
@@ -564,6 +565,7 @@
                 <tr>
                   <th>#</th>
                   <th>Asset ID</th>
+                  <th>Code de Compte</th>
                   <th>Description</th>
                   <th>Catégorie</th>
                   <th>Localisation</th>
@@ -581,6 +583,7 @@
                   <tr>
                     <td>${index + 1}</td>
                     <td>${item.asset_id || ''}</td>
+                    <td>${item.account_code || ''}</td>
                     <td>${item.description || ''}</td>
                     <td>${item.category || ''}</td>
                     <td>${item.location || ''}</td>
@@ -635,7 +638,7 @@
           
           <header className="app-header">
               <div className="header-title-section">
-              <img src="/fps-logo.svg?v=2" className="app-logo" alt="FPS Logo" style={{marginRight: '12px'}} />
+              <img src="/fps-logo.png" className="app-logo" alt="FPS Logo" style={{marginRight: '12px'}} />
               <div className="header-text">
                 <h1>FPS — Gestion des Équipements</h1>
                 <p className="header-tagline">Système Intégré de Gestion d'Inventaire</p>
@@ -654,7 +657,7 @@
               <div className="login-container">
                 <div className="login-box">
                   <div className="login-icon">🔐</div>
-                  <h2>Connexion Administrateur</h2>
+                  <h2>Connexion Auditeur</h2>
                   <p className="login-subtitle">Veuillez vous identifier pour accéder au système de gestion</p>
                   
                   <form onSubmit={handleLogin} className="login-form">
@@ -745,6 +748,7 @@
                         </th>
                         <th>#</th>
                         <th>Asset ID</th>
+                        <th>Code de Compte</th>
                         <th>Description</th>
                         <th>Catégorie</th>
                         <th>Localisation</th>
@@ -772,6 +776,7 @@
                           </td>
                           <td>{i+1}</td>
                           <td>{it.asset_id}</td>
+                          <td>{it.account_code}</td>
                           <td>{it.description}</td>
                           <td>{it.category}</td>
                           <td>{it.location}</td>
@@ -803,6 +808,7 @@
                     <div key={it._id} className="card">
                       <input className="card-select" type="checkbox" checked={isSelected(it._id)} onChange={() => toggleSelect(it._id)} title="Sélectionner" />
                       <h3>{it.asset_id}</h3>
+                      {it.account_code && <p><strong>Code de Compte:</strong> {it.account_code}</p>}
                       <p><strong>Description:</strong> {it.description}</p>
                       <p><strong>Catégorie:</strong> {it.category}</p>
                       <p><strong>Localisation:</strong> {it.location}</p>
@@ -863,6 +869,10 @@
                         <div className="form-group-table">
                           <label>Asset ID <span className="required">*</span></label>
                           <input type="text" name="asset_id" value={form.asset_id} onChange={onChange} required placeholder="Saisir l'Asset ID" style={{background:'#fff'}} />
+                        </div>
+                        <div className="form-group-table">
+                          <label>Code de Compte</label>
+                          <input type="text" name="account_code" value={form.account_code} onChange={onChange} placeholder="Ex: 2410..." />
                         </div>
                         <div className="form-group-table">
                           <label>Description <span className="required">*</span></label>
@@ -969,7 +979,7 @@
                 </div>
                 <div id="label" className="qr-label">
                   <div id="qrcode" className="qr-code"></div>
-                  <span style={{fontSize: '32px', marginRight: '8px'}}>🏥</span>
+                  <img src="/fps-logo.png" className="logo" alt="FPS Logo" />
                   <div className="asset-id"></div>
                 </div>
               </div>
