@@ -1,53 +1,47 @@
-const { CosmosClient } = require('@azure/cosmos');
+const { MongoClient } = require('mongodb');
 
-// Configuration Cosmos DB
-const endpoint = process.env.COSMOS_ENDPOINT || 'https://localhost:8081';
-const key = process.env.COSMOS_KEY || 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='; // Clé émulateur par défaut
-const databaseId = process.env.COSMOS_DATABASE_ID || 'LabelisationDB';
-const containerId = process.env.COSMOS_CONTAINER_ID || 'Equipment';
+// Configuration MongoDB Atlas
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const dbName = process.env.MONGODB_DATABASE || 'LabelisationDB';
+const collectionName = 'equipment';
 
-// Initialisation du client Cosmos DB
-const client = new CosmosClient({ endpoint, key });
-
-let container;
+// Client MongoDB
+let client;
+let db;
+let collection;
 let isInitialized = false;
 
 /**
- * Initialise la connexion à Cosmos DB et crée la base/container si nécessaire
+ * Initialise la connexion à MongoDB Atlas
  */
 async function initializeDatabase() {
-  if (isInitialized) return container;
+  if (isInitialized) return collection;
 
   try {
-    console.log('🔄 Connexion à Azure Cosmos DB...');
+    console.log('🔄 Connexion à MongoDB Atlas...');
     
-    // Créer la base de données si elle n'existe pas
-    const { database } = await client.databases.createIfNotExists({ id: databaseId });
-    console.log(`✅ Base de données: ${databaseId}`);
-
-    // Créer le conteneur avec clé de partition
-    const { container: newContainer } = await database.containers.createIfNotExists({
-      id: containerId,
-      partitionKey: {
-        paths: ['/category'], // Partition par catégorie d'équipement
-        kind: 'Hash'
-      },
-      indexingPolicy: {
-        automatic: true,
-        indexingMode: 'consistent',
-        includedPaths: [{ path: '/*' }],
-        excludedPaths: [{ path: '/"_etag"/?' }]
-      }
+    // Créer le client et se connecter
+    client = new MongoClient(uri, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     });
-
-    container = newContainer;
-    isInitialized = true;
-    console.log(`✅ Conteneur: ${containerId}`);
-    console.log('✅ Cosmos DB initialisé avec succès');
     
-    return container;
+    await client.connect();
+    console.log('✅ Connecté à MongoDB Atlas');
+    
+    // Accéder à la base de données et la collection
+    db = client.db(dbName);
+    collection = db.collection(collectionName);
+    
+    // Créer un index sur le champ id pour les recherches rapides
+    await collection.createIndex({ id: 1 }, { unique: true });
+    console.log(`✅ Base de données: ${dbName}`);
+    console.log(`✅ Collection: ${collectionName}`);
+    
+    isInitialized = true;
+    return collection;
   } catch (error) {
-    console.error('❌ Erreur initialisation Cosmos DB:', error.message);
+    console.error('❌ Erreur initialisation MongoDB:', error.message);
     throw error;
   }
 }
@@ -58,11 +52,12 @@ async function initializeDatabase() {
 async function getAllEquipment() {
   await initializeDatabase();
   
-  const { resources } = await container.items
-    .query('SELECT * FROM c ORDER BY c.created_at DESC')
-    .fetchAll();
+  const equipment = await collection
+    .find({})
+    .sort({ created_at: -1 })
+    .toArray();
   
-  return resources;
+  return equipment;
 }
 
 /**
@@ -71,14 +66,8 @@ async function getAllEquipment() {
 async function getEquipmentById(id) {
   await initializeDatabase();
   
-  const { resources } = await container.items
-    .query({
-      query: 'SELECT * FROM c WHERE c.id = @id',
-      parameters: [{ name: '@id', value: id }]
-    })
-    .fetchAll();
-  
-  return resources[0] || null;
+  const item = await collection.findOne({ id });
+  return item;
 }
 
 /**
@@ -93,13 +82,12 @@ async function createEquipment(data) {
   const newItem = {
     id,
     ...data,
-    category: data.category || 'general', // Clé de partition par défaut
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
   
-  const { resource } = await container.items.create(newItem);
-  return resource;
+  await collection.insertOne(newItem);
+  return newItem;
 }
 
 /**
@@ -108,7 +96,7 @@ async function createEquipment(data) {
 async function updateEquipment(id, data) {
   await initializeDatabase();
   
-  // Récupérer l'item existant pour avoir la partition key
+  // Vérifier que l'équipement existe
   const existing = await getEquipmentById(id);
   if (!existing) {
     throw new Error('Equipment not found');
@@ -118,13 +106,16 @@ async function updateEquipment(id, data) {
     ...existing,
     ...data,
     id: existing.id, // Préserver l'ID
-    category: existing.category, // Préserver la partition key
     created_at: existing.created_at, // Préserver la date de création
     updated_at: new Date().toISOString()
   };
   
-  const { resource } = await container.item(id, existing.category).replace(updatedItem);
-  return resource;
+  await collection.updateOne(
+    { id },
+    { $set: updatedItem }
+  );
+  
+  return updatedItem;
 }
 
 /**
@@ -133,13 +124,13 @@ async function updateEquipment(id, data) {
 async function deleteEquipment(id) {
   await initializeDatabase();
   
-  // Récupérer l'item pour avoir la partition key
+  // Vérifier que l'équipement existe
   const existing = await getEquipmentById(id);
   if (!existing) {
     throw new Error('Equipment not found');
   }
   
-  await container.item(id, existing.category).delete();
+  await collection.deleteOne({ id });
   return { success: true };
 }
 
@@ -149,11 +140,8 @@ async function deleteEquipment(id) {
 async function countEquipment() {
   await initializeDatabase();
   
-  const { resources } = await container.items
-    .query('SELECT VALUE COUNT(1) FROM c')
-    .fetchAll();
-  
-  return resources[0] || 0;
+  const count = await collection.countDocuments();
+  return count;
 }
 
 module.exports = {

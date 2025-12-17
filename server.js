@@ -63,10 +63,10 @@ app.get('/api/test', async (req, res) => {
     const count = await db.countEquipment();
     res.json({ 
       status: 'OK', 
-      message: 'FPS Labelisation API working with Cosmos DB!',
+      message: 'FPS Labelisation API working with MongoDB Atlas!',
       timestamp: new Date().toISOString(),
       equipmentCount: count,
-      database: 'Azure Cosmos DB'
+      database: 'MongoDB Atlas'
     });
   } catch (error) {
     res.status(500).json({ 
