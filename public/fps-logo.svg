@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 512 512">
+  <rect width="100%" height="100%" rx="36" ry="36" fill="#0b5ed7" />
+  <text x="50%" y="56%" fill="#fff" font-size="120" font-family="Segoe UI, Arial, sans-serif" font-weight="700" text-anchor="middle" dominant-baseline="middle">FPS</text>
+</svg>

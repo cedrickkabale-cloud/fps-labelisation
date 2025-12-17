@@ -68,11 +68,20 @@ app.get('/api/test', (req, res) => {
 
 // Routes pour assets
 app.get('/favicon.ico', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+  // Serve an SVG favicon to avoid needing a binary .ico file
+  res.type('image/svg+xml');
+  res.sendFile(path.join(__dirname, 'assets', 'fps-logo.svg'));
 });
 
 app.get('/fps-logo.png', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'fps-logo.png'));
+  // Serve the logo from the assets folder (fallback exists there)
+  res.sendFile(path.join(__dirname, 'assets', 'fps-logo.png'));
+});
+
+// Also expose an SVG logo for modern browsers and CSS backgrounds
+app.get('/fps-logo.svg', (req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile(path.join(__dirname, 'assets', 'fps-logo.svg'));
 });
 
 app.get('/style.css', (req, res) => {
