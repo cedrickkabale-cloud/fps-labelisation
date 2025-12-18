@@ -1,47 +1,35 @@
-const { MongoClient } = require('mongodb');
+const { sql } = require('@vercel/postgres');
 
-// Configuration MongoDB Atlas
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-const dbName = process.env.MONGODB_DATABASE || 'LabelisationDB';
-const collectionName = 'equipment';
-
-// Client MongoDB
-let client;
-let db;
-let collection;
 let isInitialized = false;
 
 /**
- * Initialise la connexion à MongoDB Atlas
+ * Initialise la base de données Vercel Postgres
+ * Crée la table equipment si elle n'existe pas
  */
 async function initializeDatabase() {
-  if (isInitialized) return collection;
+  if (isInitialized) return;
 
   try {
-    console.log('🔄 Connexion à MongoDB Atlas...');
+    console.log('🔄 Initialisation de Vercel Postgres...');
     
-    // Créer le client et se connecter
-    client = new MongoClient(uri, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    });
+    // Créer la table equipment si elle n'existe pas
+    await sql`
+      CREATE TABLE IF NOT EXISTS equipment (
+        id TEXT PRIMARY KEY,
+        code_compte TEXT,
+        designation TEXT,
+        numero_serie TEXT,
+        category TEXT,
+        etat TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
     
-    await client.connect();
-    console.log('✅ Connecté à MongoDB Atlas');
-    
-    // Accéder à la base de données et la collection
-    db = client.db(dbName);
-    collection = db.collection(collectionName);
-    
-    // Créer un index sur le champ id pour les recherches rapides
-    await collection.createIndex({ id: 1 }, { unique: true });
-    console.log(`✅ Base de données: ${dbName}`);
-    console.log(`✅ Collection: ${collectionName}`);
-    
+    console.log('✅ Vercel Postgres initialisé');
     isInitialized = true;
-    return collection;
   } catch (error) {
-    console.error('❌ Erreur initialisation MongoDB:', error.message);
+    console.error('❌ Erreur initialisation Postgres:', error.message);
     throw error;
   }
 }
@@ -52,12 +40,12 @@ async function initializeDatabase() {
 async function getAllEquipment() {
   await initializeDatabase();
   
-  const equipment = await collection
-    .find({})
-    .sort({ created_at: -1 })
-    .toArray();
+  const { rows } = await sql`
+    SELECT * FROM equipment 
+    ORDER BY created_at DESC
+  `;
   
-  return equipment;
+  return rows;
 }
 
 /**
@@ -66,8 +54,12 @@ async function getAllEquipment() {
 async function getEquipmentById(id) {
   await initializeDatabase();
   
-  const item = await collection.findOne({ id });
-  return item;
+  const { rows } = await sql`
+    SELECT * FROM equipment 
+    WHERE id = ${id}
+  `;
+  
+  return rows[0] || null;
 }
 
 /**
@@ -79,15 +71,31 @@ async function createEquipment(data) {
   // Générer un ID unique basé sur le timestamp et random
   const id = `EQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
-  const newItem = {
-    id,
-    ...data,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
+  const { rows } = await sql`
+    INSERT INTO equipment (
+      id, 
+      code_compte, 
+      designation, 
+      numero_serie, 
+      category, 
+      etat,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${id},
+      ${data.code_compte || null},
+      ${data.designation || null},
+      ${data.numero_serie || null},
+      ${data.category || null},
+      ${data.etat || null},
+      NOW(),
+      NOW()
+    )
+    RETURNING *
+  `;
   
-  await collection.insertOne(newItem);
-  return newItem;
+  return rows[0];
 }
 
 /**
@@ -96,26 +104,24 @@ async function createEquipment(data) {
 async function updateEquipment(id, data) {
   await initializeDatabase();
   
-  // Vérifier que l'équipement existe
-  const existing = await getEquipmentById(id);
-  if (!existing) {
+  const { rows } = await sql`
+    UPDATE equipment 
+    SET 
+      code_compte = ${data.code_compte || null},
+      designation = ${data.designation || null},
+      numero_serie = ${data.numero_serie || null},
+      category = ${data.category || null},
+      etat = ${data.etat || null},
+      updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  
+  if (rows.length === 0) {
     throw new Error('Equipment not found');
   }
   
-  const updatedItem = {
-    ...existing,
-    ...data,
-    id: existing.id, // Préserver l'ID
-    created_at: existing.created_at, // Préserver la date de création
-    updated_at: new Date().toISOString()
-  };
-  
-  await collection.updateOne(
-    { id },
-    { $set: updatedItem }
-  );
-  
-  return updatedItem;
+  return rows[0];
 }
 
 /**
@@ -124,13 +130,15 @@ async function updateEquipment(id, data) {
 async function deleteEquipment(id) {
   await initializeDatabase();
   
-  // Vérifier que l'équipement existe
-  const existing = await getEquipmentById(id);
-  if (!existing) {
+  const { rowCount } = await sql`
+    DELETE FROM equipment 
+    WHERE id = ${id}
+  `;
+  
+  if (rowCount === 0) {
     throw new Error('Equipment not found');
   }
   
-  await collection.deleteOne({ id });
   return { success: true };
 }
 
@@ -140,8 +148,11 @@ async function deleteEquipment(id) {
 async function countEquipment() {
   await initializeDatabase();
   
-  const count = await collection.countDocuments();
-  return count;
+  const { rows } = await sql`
+    SELECT COUNT(*) as count FROM equipment
+  `;
+  
+  return parseInt(rows[0].count);
 }
 
 module.exports = {

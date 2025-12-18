@@ -63,10 +63,10 @@ app.get('/api/test', async (req, res) => {
     const count = await db.countEquipment();
     res.json({ 
       status: 'OK', 
-      message: 'FPS Labelisation API working with MongoDB Atlas!',
+      message: 'FPS Labelisation API working with Vercel Postgres!',
       timestamp: new Date().toISOString(),
       equipmentCount: count,
-      database: 'MongoDB Atlas'
+      database: 'Vercel Postgres'
     });
   } catch (error) {
     res.status(500).json({ 
