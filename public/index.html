@@ -31,9 +31,28 @@
     function App() {
       const initialValues = {
         asset_id: generateAssetId(),
-        code_compte: '',
-        designation: '',
-        numero_serie: '',
+        // Nouveaux champs demandés
+        order_number: '',
+        account_code: '',
+        description: '',
+        purchase_year: '',
+        location: '',
+        users: '',
+        quantity: 1,
+        account_title: '',
+        unit_price: '',
+        purchase_price_usd: '',
+        remarks: '',
+        // Champs existants conservés
+        purchase_price: '',
+        currency: 'USD',
+        useful_life: '',
+        depreciation_method: '',
+        depreciation_rate: '',
+        accumulated_depreciation: '',
+        net_book_value: '',
+        responsible: '',
+        alert: '',
         category: '',
         etat: ''
       };
@@ -886,113 +905,110 @@
 
               <form onSubmit={submit} className="form">
                 <h2 className="form-main-title">📋 Formulaire d'Enregistrement d'Équipement</h2>
-                
-                <table className="form-table">
-                  <thead>
-                    <tr>
-                      <th className="category-header">🏷️ Identification</th>
-                      <th className="category-header">📍 Localisation</th>
-                      <th className="category-header">💰 Finances</th>
-                      <th className="category-header">📊 Amortissement</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="form-cell" data-label="🏷️ Identification">
-                        <div className="form-group-table">
-                          <label>Asset ID <span className="required">*</span></label>
-                          <input type="text" name="asset_id" value={form.asset_id} onChange={onChange} required placeholder="Saisir l'Asset ID" style={{background:'#fff'}} />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Code de Compte</label>
-                          <input type="text" name="account_code" value={form.account_code} onChange={onChange} placeholder="Ex: 2410..." />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Description <span className="required">*</span></label>
-                          <textarea name="description" value={form.description} onChange={onChange} required placeholder="Description détaillée..." rows="3" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Catégorie <span className="required">*</span></label>
-                          <input name="category" value={form.category} onChange={onChange} required placeholder="Ex: Mobilier..." />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Condition <span className="required">*</span></label>
-                          <select name="condition" value={form.condition} onChange={onChange} required>
-                            <option value="">-- Sélectionner --</option>
-                            <option value="Neuf">Neuf</option>
-                            <option value="Excellent">Excellent</option>
-                            <option value="Bon">Bon</option>
-                            <option value="Moyen">Moyen</option>
-                            <option value="Mauvais">Mauvais</option>
-                          </select>
-                        </div>
-                      </td>
-                      
-                      <td className="form-cell" data-label="📍 Localisation">
-                        <div className="form-group-table">
-                          <label>Emplacement <span className="required">*</span></label>
-                          <input name="location" value={form.location} onChange={onChange} required placeholder="Bureau, Étage..." />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Responsable <span className="required">*</span></label>
-                          <input name="responsible" value={form.responsible} onChange={onChange} required placeholder="Nom complet" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Alerte</label>
-                          <input name="alert" value={form.alert} onChange={onChange} placeholder="Notes..." />
-                        </div>
-                      </td>
-                      
-                      <td className="form-cell" data-label="💰 Finances">
-                        <div className="form-group-table">
-                          <label>Date d'achat <span className="required">*</span></label>
-                          <input name="purchase_date" type="date" value={form.purchase_date} onChange={onChange} required />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Prix d'achat <span className="required">*</span></label>
-                          <input name="purchase_price" type="number" step="0.01" value={form.purchase_price} onChange={onChange} required placeholder="0.00" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Devise <span className="required">*</span></label>
-                          <select name="currency" value={form.currency} onChange={onChange} required>
-                            <option value="USD">USD</option>
-                            <option value="CDF">CDF</option>
-                          </select>
-                        </div>
-                      </td>
-                      
-                      <td className="form-cell" data-label="📊 Amortissement">
-                        <div className="form-group-table">
-                          <label>Durée vie (ans) <span className="required">*</span></label>
-                          <input name="useful_life" type="number" value={form.useful_life} onChange={onChange} required placeholder="5" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Méthode <span className="required">*</span></label>
-                          <input name="depreciation_method" value={form.depreciation_method} onChange={onChange} required placeholder="Linéaire" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Taux (%) <span className="required">*</span></label>
-                          <input name="depreciation_rate" type="number" step="0.01" value={form.depreciation_rate} onChange={onChange} required placeholder="0.00" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Amort. cumulé <span className="required">*</span></label>
-                          <input name="accumulated_depreciation" type="number" step="0.01" value={form.accumulated_depreciation} onChange={onChange} required placeholder="0.00" />
-                        </div>
-                        <div className="form-group-table">
-                          <label>Valeur nette <span className="required">*</span></label>
-                          <input name="net_book_value" type="number" step="0.01" value={form.net_book_value} onChange={onChange} required placeholder="0.00" />
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                
-                {/* Remarques en pleine largeur sous le tableau */}
-                <div className="form-section-remarks">
-                  <h3 className="form-section-title">📋 Remarques</h3>
-                  <div className="form-group-table">
-                    <label>Remarques additionnelles</label>
-                    <textarea name="remarks" value={form.remarks} onChange={onChange} placeholder="Informations complémentaires..." rows="3" />
+
+                <div className="vertical-form">
+                  <div className="form-group">
+                    <label>1. Numéro d'ordre</label>
+                    <input type="text" name="order_number" value={form.order_number} onChange={onChange} placeholder="Numéro d'ordre" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>2. Code</label>
+                    <input type="text" name="account_code" value={form.account_code} onChange={onChange} placeholder="Code" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>3. Désignation</label>
+                    <textarea name="description" value={form.description} onChange={onChange} placeholder="Désignation / Description" rows="2" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>4. Année d'acquisition</label>
+                    <input type="number" name="purchase_year" value={form.purchase_year} onChange={onChange} placeholder="YYYY" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>5. Localisation</label>
+                    <input type="text" name="location" value={form.location} onChange={onChange} placeholder="Bureau, Étage..." />
+                  </div>
+
+                  <div className="form-group">
+                    <label>6. Utilisateurs</label>
+                    <input type="text" name="users" value={form.users} onChange={onChange} placeholder="Utilisateur(s)" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>7. Quantités</label>
+                    <input type="number" name="quantity" value={form.quantity} onChange={onChange} min="1" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>8. Intitulé du Compte</label>
+                    <input type="text" name="account_title" value={form.account_title} onChange={onChange} placeholder="Intitulé du compte" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>9. P.U.</label>
+                    <input type="number" name="unit_price" value={form.unit_price} onChange={onChange} step="0.01" placeholder="Prix unitaire" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>10. Valeur d'acquisition USD</label>
+                    <input type="number" name="purchase_price_usd" value={form.purchase_price_usd} onChange={onChange} step="0.01" placeholder="Valeur en USD" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>11. Observation</label>
+                    <textarea name="remarks" value={form.remarks} onChange={onChange} placeholder="Observation / Remarques" rows="2" />
+                  </div>
+
+                </div>
+
+                {/* Conserver les champs financiers et d'amortissement existants après les nouveaux champs */}
+                <div className="form-section">
+                  <h3 className="form-section-title">💰 Champs financiers (optionnels)</h3>
+                  <div className="form-row">
+                    <div className="form-group-table">
+                      <label>Date d'achat</label>
+                      <input name="purchase_date" type="date" value={form.purchase_date} onChange={onChange} />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Prix d'achat</label>
+                      <input name="purchase_price" type="number" step="0.01" value={form.purchase_price} onChange={onChange} placeholder="0.00" />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Devise</label>
+                      <select name="currency" value={form.currency} onChange={onChange}>
+                        <option value="USD">USD</option>
+                        <option value="CDF">CDF</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-section">
+                  <h3 className="form-section-title">📊 Amortissement (conservé)</h3>
+                  <div className="form-row">
+                    <div className="form-group-table">
+                      <label>Durée vie (ans)</label>
+                      <input name="useful_life" type="number" value={form.useful_life} onChange={onChange} placeholder="5" />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Méthode</label>
+                      <input name="depreciation_method" value={form.depreciation_method} onChange={onChange} placeholder="Linéaire" />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Taux (%)</label>
+                      <input name="depreciation_rate" type="number" step="0.01" value={form.depreciation_rate} onChange={onChange} placeholder="0.00" />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Amort. cumulé</label>
+                      <input name="accumulated_depreciation" type="number" step="0.01" value={form.accumulated_depreciation} onChange={onChange} placeholder="0.00" />
+                    </div>
+                    <div className="form-group-table">
+                      <label>Valeur nette</label>
+                      <input name="net_book_value" type="number" step="0.01" value={form.net_book_value} onChange={onChange} placeholder="0.00" />
+                    </div>
                   </div>
                 </div>
 
