@@ -7,6 +7,8 @@ const fs = require('fs');
 // In-memory fallback store used when the DB is unavailable (development/testing)
 let fallbackItems = [];
 const fallbackFile = path.join(__dirname, 'fallback_items.json');
+// Maximum number of fallback items to keep in memory/file. Set to 0 for unlimited.
+const FALLBACK_ITEMS_MAX = process.env.FALLBACK_ITEMS_MAX ? parseInt(process.env.FALLBACK_ITEMS_MAX, 10) : 0;
 
 function loadFallback() {
   try {
@@ -73,7 +75,7 @@ app.post('/api/equipment', async (req, res) => {
     };
     fallbackItems.unshift(fallbackItem);
     // Limit fallback store size to avoid unbounded memory growth during development
-    if (fallbackItems.length > 1000) fallbackItems.length = 1000;
+    if (FALLBACK_ITEMS_MAX > 0 && fallbackItems.length > FALLBACK_ITEMS_MAX) fallbackItems.length = FALLBACK_ITEMS_MAX;
     // Persist to disk
     saveFallback();
     res.status(201).json({ success: true, item: fallbackItem, warning: 'stored-in-memory' });
