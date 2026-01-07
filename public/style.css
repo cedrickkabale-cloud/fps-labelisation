@@ -38,12 +38,11 @@ h1, h2, h3, h4, h5, h6 {
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  /* Ne pas centrer tout le document verticalement - permet un layout plus naturel et scrollable */
   padding: 20px;
   color: var(--text-dark);
   line-height: 1.6;
+  min-height: 100vh;
 }
 
 .container {
@@ -59,6 +58,9 @@ body {
   min-height: 650px;
   animation: containerFadeIn 0.6s ease-out;
 }
+
+/* Center container horizontally while allowing natural vertical flow */
+.container { margin: 20px auto; }
 
 /* Mode large pour une vue "paysage" à l'écran */
 .container.wide {
