@@ -407,6 +407,53 @@ body {
   text-align: center;
 }
 
+/* Styles pour le nouveau formulaire vertical */
+.vertical-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto 18px auto;
+}
+.vertical-form .form-group {
+  display: flex;
+  flex-direction: column;
+}
+.vertical-form label {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text-dark);
+}
+.vertical-form input[type="text"],
+.vertical-form input[type="number"],
+.vertical-form input[type="date"],
+.vertical-form select,
+.vertical-form textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: var(--text-dark);
+}
+.vertical-form textarea { resize: vertical; min-height: 40px; }
+
+.form-section { width: 100%; max-width: 1100px; margin: 12px auto; }
+.form-section-title { margin: 8px 0 10px 0; font-size: 1rem; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.form-group-table { flex: 1 1 220px; display: flex; flex-direction: column; }
+
+.actions { display:flex; gap:10px; align-items:center; margin-top:14px; }
+.actions button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:700; }
+
+/* Small screens */
+@media (max-width: 900px) {
+  .vertical-form { padding: 0 10px; }
+  .form-row { flex-direction: column; }
+  .form-group-table { width: 100%; }
+}
+
 .instructions-box ul {
   margin: 0;
   padding: 0;
