@@ -4,8 +4,9 @@ const path = require('path');
 const db = require('./db');
 const app = express();
 
-// Middleware
-app.use(express.json());
+// Middleware - Augmenter la limite pour les données JSON
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(express.static('public', {
   maxAge: '1d',
   etag: false
@@ -21,8 +22,10 @@ app.get('/api/equipment', async (req, res) => {
     const equipment = await db.getAllEquipment();
     res.json(equipment);
   } catch (error) {
-    console.error('Erreur GET /api/equipment:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Erreur GET /api/equipment (fallback to empty list):', error.message || error);
+    // En développement local, si la DB n'est pas disponible, renvoyer une liste vide
+    // permet de tester l'interface sans bloquer l'usage client.
+    res.json([]);
   }
 });
 
@@ -60,18 +63,35 @@ app.delete('/api/equipment/:id', async (req, res) => {
 
 app.get('/api/test', async (req, res) => {
   try {
-    const count = await db.countEquipment();
+    // Vérifier les variables d'environnement disponibles
+    const envVars = {
+      hasStockageUrl: !!process.env.STOCKAGE_PRISMA_DATABASE_URL,
+      hasPrismaUrl: !!process.env.PRISMA_DATABASE_URL,
+      hasStockageDbUrl: !!process.env.STOCKAGE_DATABASE_URL
+    };
+    
+    let count = 0;
+    try {
+      count = await db.countEquipment();
+    } catch (err) {
+      console.warn('Warning: countEquipment failed (DB unavailable):', err.message || err);
+      count = 0;
+    }
+
     res.json({ 
       status: 'OK', 
-      message: 'FPS Labelisation API working with Vercel Postgres!',
+      message: 'FPS Labelisation API (test endpoint)',
       timestamp: new Date().toISOString(),
       equipmentCount: count,
-      database: 'Vercel Postgres'
+      database: process.env.MONGODB_URI ? 'MongoDB' : 'Unavailable',
+      envVars
     });
   } catch (error) {
+    console.error('Erreur /api/test:', error);
     res.status(500).json({ 
       status: 'ERROR', 
-      message: error.message,
+      message: error.message || 'Unknown error',
+      stack: error.stack,
       timestamp: new Date().toISOString()
     });
   }

@@ -31,22 +31,11 @@
     function App() {
       const initialValues = {
         asset_id: generateAssetId(),
-        account_code: '',
-        description: '',
+        code_compte: '',
+        designation: '',
+        numero_serie: '',
         category: '',
-        location: '',
-        responsible: '',
-        purchase_date: '',
-        purchase_price: '',
-        currency: 'USD',
-        useful_life: '',
-        depreciation_method: '',
-        depreciation_rate: '',
-        accumulated_depreciation: '',
-        net_book_value: '',
-        condition: '',
-        alert: '',
-        remarks: ''
+        etat: ''
       };
 
       const [form, setForm] = useState(initialValues);
@@ -220,7 +209,7 @@
           text: assetId,
           width: 106,  // 2.8cm à 96dpi ≈ 106px
           height: 106,
-          correctLevel: QRCode.CorrectLevel.H
+          correctLevel: QRCode.CorrectLevel.M  // Medium (au lieu de High) pour supporter plus de caractères
         });
 
         // Mettre à jour l'ID
@@ -618,6 +607,48 @@
         };
       }
 
+      function printLabelsBulk(onlySelected = false) {
+        const filtered = getFilteredItems();
+        const itemsToPrint = onlySelected && selectedIds.length ? filtered.filter(it => selectedIds.includes(it.id)) : filtered;
+        if (!itemsToPrint || !itemsToPrint.length) return showToast('Aucune donnée à imprimer', 'error');
+
+        // Construire une page d'impression avec des étiquettes 6cm x 5cm
+        const labelsHtml = itemsToPrint.map(it => `
+          <div class="print-label">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=106x106&data=${encodeURIComponent(it.asset_id || '')}" alt="QR" />
+            <div class="label-text">${(it.asset_id || '')}</div>
+          </div>
+        `).join('');
+
+        const printContent = `
+          <!doctype html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Étiquettes FPS</title>
+            <style>
+              @page { size: A4; margin: 10mm; }
+              body { font-family: Arial, sans-serif; margin:0; padding:10mm; }
+              .labels { display:flex; flex-wrap:wrap; gap:6mm; }
+              .print-label { width: 60mm; height:50mm; box-sizing:border-box; border:1px solid transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; page-break-inside:avoid; }
+              .print-label img { width:106px; height:106px; }
+              .label-text { margin-top:6px; font-size:12px; font-weight:bold; color:#111; }
+            </style>
+          </head>
+          <body>
+            <div class="labels">
+              ${labelsHtml}
+            </div>
+          </body>
+          </html>
+        `;
+
+        const w = window.open('', '_blank');
+        w.document.write(printContent);
+        w.document.close();
+        w.onload = function() { w.focus(); w.print(); showToast('Impression lancée - ' + itemsToPrint.length + ' étiquettes', 'success'); };
+      }
+
       return (
   <div className={`container ${tableFullscreen ? 'wide' : ''}`}>
           {toast.show && (
@@ -714,6 +745,8 @@
                 </div>
                 <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
                   <button onClick={printAllDataPDF} style={{background:'#dc3545', border:'none'}}>🖨️ Imprimer PDF</button>
+                  <button onClick={() => printLabelsBulk(false)} style={{background:'#6f42c1', border:'none'}}>🖨️ Imprimer étiquettes</button>
+                  <button onClick={() => printLabelsBulk(true)} disabled={selectedIds.length===0} style={{background:'#5a189a', border:'none'}}>🖨️ Imprimer sélection ({selectedIds.length || 0})</button>
                   <button onClick={exportCSV} style={{background:'#198754', border:'none'}}>📄 Export CSV</button>
                   <button onClick={exportXLSX} style={{background:'#0d6efd', border:'none'}}>📊 Export Excel</button>
                   <button onClick={bulkDeleteSelected} disabled={selectedIds.length===0} style={{background:'#dc3545', border:'none'}}>
