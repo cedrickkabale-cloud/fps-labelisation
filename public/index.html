@@ -202,8 +202,9 @@
             const data = await res.json();
             if (data.success) {
               setMessage('Enregistré avec succès - Vous pouvez maintenant imprimer le QR code');
-              // Afficher le QR code immédiatement après enregistrement
-              renderLabel(data.item.asset_id);
+              // Afficher le QR code immédiatement après enregistrement — utiliser le champ "code" si fourni
+              const codeVal = data.item.account_code || data.item.code || data.item.asset_id || form.account_code || form.asset_id;
+              renderLabel(codeVal);
               // Réinitialiser le formulaire avec un nouvel ID
               setForm({...initialValues, asset_id: generateAssetId()});
             } else {
@@ -218,26 +219,34 @@
       function renderLabel(assetId) {
         const label = document.getElementById('label');
         const labelContainer = document.getElementById('label-container');
-        const qrcodeDiv = document.getElementById('qrcode');
-        
-        // Nettoyer le QR code existant
+
+        // Construire la structure: QR à gauche, logo FPS à droite, code en bas
+        label.innerHTML = `
+          <div class="label-inner" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+            <div id="qrcode" style="flex:0 0 auto; width:120px; height:120px;"></div>
+            <div style="flex:0 0 auto; margin-left:12px;">
+              <img src="/fps-logo.png" alt="FPS Logo" style="height:80px; width:auto;" />
+            </div>
+          </div>
+          <div class="label-code" style="text-align:center; margin-top:6px; font-weight:bold; font-size:14px;"></div>
+        `;
+
+        const qrcodeDiv = label.querySelector('#qrcode');
         qrcodeDiv.innerHTML = '';
-        
-        // Générer le nouveau QR code avec taille optimisée pour impression
         new QRCode(qrcodeDiv, {
           text: assetId,
-          width: 106,  // 2.8cm à 96dpi ≈ 106px
+          width: 106,
           height: 106,
-          correctLevel: QRCode.CorrectLevel.M  // Medium (au lieu de High) pour supporter plus de caractères
+          correctLevel: QRCode.CorrectLevel.M
         });
 
-        // Mettre à jour l'ID
-        label.querySelector('.asset-id').textContent = assetId;
-        
-        // Afficher l'étiquette et le conteneur
+        // Mettre à jour le code affiché en dessous
+        label.querySelector('.label-code').textContent = assetId;
+
+        // Afficher le conteneur
         label.classList.add('visible');
         labelContainer.style.display = 'block';
-        
+
         // Scroll vers l'étiquette
         setTimeout(() => {
           labelContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -246,14 +255,14 @@
 
       function printLabel() {
         const label = document.getElementById('label');
-        
+
         if (!label.classList.contains('visible')) {
           showToast('Veuillez d\'abord enregistrer un équipement avant d\'imprimer', 'error');
           return;
         }
-        
+
         // Afficher une confirmation avant d'imprimer
-        const assetId = label.querySelector('.asset-id').textContent;
+        const assetId = (label.querySelector('.label-code') && label.querySelector('.label-code').textContent) || '';
         const confirmPrint = window.confirm(
           `Voulez-vous imprimer l'étiquette pour l'équipement ${assetId} ?\n\n` +
           `L'étiquette sera imprimée au format 6cm × 5cm.\n` +
@@ -632,12 +641,15 @@
         if (!itemsToPrint || !itemsToPrint.length) return showToast('Aucune donnée à imprimer', 'error');
 
         // Construire une page d'impression avec des étiquettes 6cm x 5cm
-        const labelsHtml = itemsToPrint.map(it => `
+        const labelsHtml = itemsToPrint.map(it => {
+          const code = it.account_code || it.code || it.asset_id || '';
+          return `
           <div class="print-label">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=106x106&data=${encodeURIComponent(it.asset_id || '')}" alt="QR" />
-            <div class="label-text">${(it.asset_id || '')}</div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=106x106&data=${encodeURIComponent(code)}" alt="QR" />
+            <div class="label-text">${code}</div>
           </div>
-        `).join('');
+        `;
+        }).join('');
 
         const printContent = `
           <!doctype html>
